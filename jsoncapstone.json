@@ -1,0 +1,25 @@
+{
+"results": [
+{
+"id_berita": "6",
+"nama_berita": "Studi Banding",
+"deskripsi_berita": "Sabtu pagi, rombongan SMA Sanjayam bertolak menuju Bandungan untuk Studi Banding tentang pengelolaan asrama siswa di SMK Theresiana Bandungan. Kedua sekolah ini masih berada di bawah yayasan yang",
+"gambar_berita": "https://upload.wikimedia.org/wikipedia/commons/3/38/Lingkungan02_01.jpg",
+"tanggal": "2022-12-20"
+},
+{
+"id_berita": "7",
+"nama_berita": "dani",
+"deskripsi_berita": "ddddd",
+"gambar_berita": "ddddd",
+"tanggal": "2023-04-19"
+},
+{
+"id_berita": "8",
+"nama_berita": "222",
+"deskripsi_berita": "222",
+"gambar_berita": "http://localhost/smaimmanuel/upload/download.jpg",
+"tanggal": "2023-04-04"
+}
+]
+}
