@@ -80,7 +80,7 @@
     <form id="cekJodohForm">
         <input type="text" id="namaAnda" placeholder="Nama Anda" required><br>
         <input type="text" id="namaPasangan" placeholder="Nama Pasangan" required><br>
-        <button type="button" onclick="cekJodoh()">Cek Jodoh</button>
+        <button type="button" id="cekJodohBtn">Cek Jodoh</button>
     </form>
 
     <p id="hasil"></p>
@@ -88,23 +88,27 @@
     <script>
         const database = JSON.parse(localStorage.getItem('cekJodohDatabase')) || {};
 
-        function cekJodoh() {
+        function cekJodoh(event) {
+            event.preventDefault();  // Mencegah submit form default
+            
             let namaAnda = document.getElementById("namaAnda").value.toLowerCase();
             let namaPasangan = document.getElementById("namaPasangan").value.toLowerCase();
             const pasangan = [namaAnda, namaPasangan].sort().join('_');
 
             if (database[pasangan]) {
                 document.getElementById("hasil").innerHTML = 
-                    Hasil untuk ${namaAnda} dan ${namaPasangan}: ${database[pasangan]}% (hasil lama);
+                    `Hasil untuk ${namaAnda} dan ${namaPasangan}: ${database[pasangan]}% (hasil lama)`;
             } else {
                 const persentase = Math.floor(Math.random() * 101); // Nilai acak antara 0-100%
                 database[pasangan] = persentase;
                 localStorage.setItem('cekJodohDatabase', JSON.stringify(database));
 
                 document.getElementById("hasil").innerHTML = 
-                    Hasil untuk ${namaAnda} dan ${namaPasangan}: ${persentase}% (hasil baru);
+                    `Hasil untuk ${namaAnda} dan ${namaPasangan}: ${persentase}% (hasil baru)`;
             }
         }
+
+        document.getElementById("cekJodohBtn").addEventListener("click", cekJodoh);
     </script>
 </body>
 </html>
