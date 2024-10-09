@@ -1,114 +1,156 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cek Jodoh</title>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f8f9fa;
-            color: #333;
-            text-align: center;
-            margin-top: 50px;
-        }
-        h1 {
-            font-size: 3rem;
-            color: #ff4d4d;
-            margin-bottom: 30px;
-        }
-        p {
-            font-size: 1.2rem;
-            color: #666;
-        }
-        form {
-            margin: 20px auto;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-        }
-        input {
-            padding: 12px;
-            margin: 10px 0;
-            width: 90%;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-        input:focus {
-            border-color: #ff4d4d;
-            outline: none;
-        }
-        button {
-            padding: 12px 20px;
-            background-color: #ff4d4d;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #ff1a1a;
-        }
-        #hasil {
-            margin-top: 30px;
-            font-size: 2rem;
-            color: #ff4d4d;
-            position: relative;
-            display: inline-block;
-        }
-        #hasil::before {
-            content: url('https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Heart_coraz%C3%B3n.svg/512px-Heart_coraz%C3%B3n.svg.png');
-            position: absolute;
-            top: -50px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80px;
-            opacity: 0.2;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Batch Image Compressor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script>
+    // Set dark mode by default
+    document.documentElement.classList.add('dark');
+  </script>
 </head>
-<body>
-    <h1>Aplikasi Cek Jodoh</h1>
-    By Dani©
-    <p>Masukkan nama untuk melihat kecocokan:</p>
-    <form id="cekJodohForm">
-        <input type="text" id="namaAnda" placeholder="Nama Anda" required><br>
-        <input type="text" id="namaPasangan" placeholder="Nama Pasangan" required><br>
-        <button type="button" id="cekJodohBtn">Cek Jodoh</button>
-    </form>
+<body class="bg-gray-900 min-h-screen flex flex-col transition-colors duration-300">
 
-    <p id="hasil"></p>
+  <!-- Global Header -->
+  <header class="bg-gray-800 p-4 fixed w-full z-10">
+    <nav class="flex justify-between items-center max-w-4xl mx-auto">
+      <h1 class="text-xl text-gray-100">My Application</h1>
+      
+      <!-- Dropdown for mobile -->
+      <div class="relative lg:hidden">
+        <button id="dropdownButton" class="text-gray-300 hover:text-white focus:outline-none">
+          ☰
+        </button>
+        <div id="dropdownMenu" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg hidden">
+          <ul class="py-2">
+            <li><a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-700">Home</a></li>
+            <li><a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-700">About</a></li>
+            <li><a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-700">Contact</a></li>
+          </ul>
+        </div>
+      </div>
 
-    <script>
-        const database = JSON.parse(localStorage.getItem('cekJodohDatabase')) || {};
+      <!-- Menu for larger screens -->
+      <ul class="hidden lg:flex space-x-4">
+        <li><a href="#" class="text-gray-300 hover:text-white">Home</a></li>
+        <li><a href="#" class="text-gray-300 hover:text-white">About</a></li>
+        <li><a href="#" class="text-gray-300 hover:text-white">Contact</a></li>
+      </ul>
+    </nav>
+  </header>
 
-        function cekJodoh(event) {
-            event.preventDefault();  // Mencegah submit form default
-            
-            let namaAnda = document.getElementById("namaAnda").value.toLowerCase();
-            let namaPasangan = document.getElementById("namaPasangan").value.toLowerCase();
-            const pasangan = [namaAnda, namaPasangan].sort().join('_');
+  <!-- Main Content Container -->
+  <div class="mt-16 w-full max-w-4xl bg-gray-800 p-4 lg:p-8 rounded-lg shadow-lg transition-colors duration-300 mx-auto">
+    
+    <!-- Local Header Section -->
+    <div class="mb-4 text-center">
+      <h2 class="text-2xl lg:text-4xl font-bold text-gray-100">Batch Image Compressor</h2>
+      <p class="mt-2 text-gray-300">Upload multiple images to compress them into a ZIP file!</p>
+    </div>
 
-            if (database[pasangan]) {
-                document.getElementById("hasil").innerHTML = 
-                    `Hasil untuk ${namaAnda} dan ${namaPasangan}: ${database[pasangan]}% (hasil lama)`;
-            } else {
-                const persentase = Math.floor(Math.random() * 101); // Nilai acak antara 0-100%
-                database[pasangan] = persentase;
-                localStorage.setItem('cekJodohDatabase', JSON.stringify(database));
+    <!-- Settings Section -->
+    <div class="mb-4">
+      <label for="qualitySlider" class="text-gray-300">Compression Quality: <span id="qualityValue" class="font-bold">70%</span></label>
+      <input id="qualitySlider" type="range" min="0" max="100" value="70" class="w-full bg-gray-700 h-2 rounded-lg appearance-none cursor-pointer">
+    </div>
 
-                document.getElementById("hasil").innerHTML = 
-                    `Hasil untuk ${namaAnda} dan ${namaPasangan}: ${persentase}% (hasil baru)`;
-            }
-        }
+    <!-- Container for Image Upload -->
+    <div class="flex flex-col space-y-4">
 
-        document.getElementById("cekJodohBtn").addEventListener("click", cekJodoh);
-    </script>
+      <!-- Input for File Upload -->
+      <input id="imageInput" type="file" accept="image/*" multiple class="p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg focus:outline-none" />
+      
+      <!-- Compress Button -->
+      <button id="compressButton" class="w-full bg-blue-600 text-white py-2 lg:py-3 rounded-lg hover:bg-blue-500 transition-all duration-150">
+        Compress Images
+      </button>
+
+      <!-- Feedback Message -->
+      <p id="feedbackMessage" class="text-gray-300 text-center hidden"></p>
+    </div>
+
+  </div>
+
+  <script>
+    async function compressImage(file, quality) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          // Resize the canvas to the image's size
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          // Convert to data URL and resolve with compressed data
+          const compressedData = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedData);
+        };
+      });
+    }
+
+    document.getElementById('compressButton').addEventListener('click', async function() {
+      const imageInput = document.getElementById('imageInput');
+      const qualitySlider = document.getElementById('qualitySlider');
+      const feedbackMessage = document.getElementById('feedbackMessage');
+      const zip = new JSZip();
+      const folder = zip.folder("compressed_images");
+
+      if (imageInput.files.length === 0) {
+        feedbackMessage.textContent = "Please select some images to compress.";
+        feedbackMessage.classList.remove('hidden');
+        return;
+      }
+
+      feedbackMessage.classList.add('hidden'); // Hide feedback message
+      feedbackMessage.textContent = "Compressing images... Please wait.";
+      feedbackMessage.classList.remove('hidden');
+
+      const promises = Array.from(imageInput.files).map(async (file) => {
+        const compressedData = await compressImage(file, qualitySlider.value / 100);
+        const response = await fetch(compressedData);
+        const blob = await response.blob();
+        folder.file(file.name, blob, { binary: true });
+      });
+
+      await Promise.all(promises);
+
+      // Generate the ZIP file
+      zip.generateAsync({ type: "blob" })
+        .then(function(content) {
+          // Save the ZIP file with current date and time
+          const now = new Date();
+          const date = now.toISOString().slice(0, 10); // YYYY-MM-DD
+          const time = now.toTimeString().slice(0, 8).replace(/:/g, '-'); // HH-MM-SS
+          const filename = `compressed_images_${date}_${time}.zip`;
+          saveAs(content, filename);
+          feedbackMessage.textContent = "Images compressed successfully!";
+        });
+    });
+
+    // Update quality value display
+    document.getElementById('qualitySlider').addEventListener('input', function() {
+      document.getElementById('qualityValue').textContent = this.value + "%";
+    });
+
+    // Toggle dropdown menu visibility
+    document.getElementById('dropdownButton').addEventListener('click', () => {
+      const dropdownMenu = document.getElementById('dropdownMenu');
+      dropdownMenu.classList.toggle('hidden');
+    });
+
+    // Close dropdown menu when clicking outside
+    window.addEventListener('click', (event) => {
+      const dropdownMenu = document.getElementById('dropdownMenu');
+      if (!dropdownMenu.contains(event.target) && !document.getElementById('dropdownButton').contains(event.target)) {
+        dropdownMenu.classList.add('hidden');
+      }
+    });
+  </script>
+
 </body>
 </html>
