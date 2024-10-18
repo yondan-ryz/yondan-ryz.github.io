@@ -1,156 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Batch Image Compressor</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-  <script>
-    // Set dark mode by default
-    document.documentElement.classList.add('dark');
-  </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Reader</title>
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        #qr-reader {
+            width: 300px;
+            margin-bottom: 20px;
+        }
+        #qr-result {
+            padding: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            width: 80%;
+            text-align: center;
+            font-size: 18px;
+        }
+    </style>
 </head>
-<body class="bg-gray-900 min-h-screen flex flex-col transition-colors duration-300">
+<body>
 
-  <!-- Global Header -->
-  <header class="bg-gray-800 p-4 fixed w-full z-10">
-    <nav class="flex justify-between items-center max-w-4xl mx-auto">
-      <h1 class="text-xl text-gray-100">My Application</h1>
-      
-      <!-- Dropdown for mobile -->
-      <div class="relative lg:hidden">
-        <button id="dropdownButton" class="text-gray-300 hover:text-white focus:outline-none">
-          ☰
-        </button>
-        <div id="dropdownMenu" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg hidden">
-          <ul class="py-2">
-            <li><a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-700">Home</a></li>
-            <li><a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-700">About</a></li>
-            <li><a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-700">Contact</a></li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Menu for larger screens -->
-      <ul class="hidden lg:flex space-x-4">
-        <li><a href="#" class="text-gray-300 hover:text-white">Home</a></li>
-        <li><a href="#" class="text-gray-300 hover:text-white">About</a></li>
-        <li><a href="#" class="text-gray-300 hover:text-white">Contact</a></li>
-      </ul>
-    </nav>
-  </header>
-
-  <!-- Main Content Container -->
-  <div class="mt-16 w-full max-w-4xl bg-gray-800 p-4 lg:p-8 rounded-lg shadow-lg transition-colors duration-300 mx-auto">
+    <h1>QR Code Reader</h1>
     
-    <!-- Local Header Section -->
-    <div class="mb-4 text-center">
-      <h2 class="text-2xl lg:text-4xl font-bold text-gray-100">Batch Image Compressor</h2>
-      <p class="mt-2 text-gray-300">Upload multiple images to compress them into a ZIP file!</p>
-    </div>
+    <div id="qr-reader"></div>
+    <div id="qr-result">Scan a QR Code</div>
 
-    <!-- Settings Section -->
-    <div class="mb-4">
-      <label for="qualitySlider" class="text-gray-300">Compression Quality: <span id="qualityValue" class="font-bold">70%</span></label>
-      <input id="qualitySlider" type="range" min="0" max="100" value="70" class="w-full bg-gray-700 h-2 rounded-lg appearance-none cursor-pointer">
-    </div>
+    <script>
+        function onScanSuccess(decodedText, decodedResult) {
+            // Handle the result here
+            document.getElementById('qr-result').innerHTML = `QR Code Data: ${decodedText}`;
+        }
 
-    <!-- Container for Image Upload -->
-    <div class="flex flex-col space-y-4">
+        function onScanFailure(error) {
+            // Handle scan failure, if required
+            console.warn(`QR Code scan error: ${error}`);
+        }
 
-      <!-- Input for File Upload -->
-      <input id="imageInput" type="file" accept="image/*" multiple class="p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg focus:outline-none" />
-      
-      <!-- Compress Button -->
-      <button id="compressButton" class="w-full bg-blue-600 text-white py-2 lg:py-3 rounded-lg hover:bg-blue-500 transition-all duration-150">
-        Compress Images
-      </button>
+        // Start the QR Code scanner with the camera
+        const qrCodeScanner = new Html5QrcodeScanner(
+            "qr-reader", 
+            {
+                fps: 10,    // Frames per second
+                qrbox: 250  // QR scanning box
+            });
 
-      <!-- Feedback Message -->
-      <p id="feedbackMessage" class="text-gray-300 text-center hidden"></p>
-    </div>
-
-  </div>
-
-  <script>
-    async function compressImage(file, quality) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          // Resize the canvas to the image's size
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0);
-          // Convert to data URL and resolve with compressed data
-          const compressedData = canvas.toDataURL('image/jpeg', quality);
-          resolve(compressedData);
-        };
-      });
-    }
-
-    document.getElementById('compressButton').addEventListener('click', async function() {
-      const imageInput = document.getElementById('imageInput');
-      const qualitySlider = document.getElementById('qualitySlider');
-      const feedbackMessage = document.getElementById('feedbackMessage');
-      const zip = new JSZip();
-      const folder = zip.folder("compressed_images");
-
-      if (imageInput.files.length === 0) {
-        feedbackMessage.textContent = "Please select some images to compress.";
-        feedbackMessage.classList.remove('hidden');
-        return;
-      }
-
-      feedbackMessage.classList.add('hidden'); // Hide feedback message
-      feedbackMessage.textContent = "Compressing images... Please wait.";
-      feedbackMessage.classList.remove('hidden');
-
-      const promises = Array.from(imageInput.files).map(async (file) => {
-        const compressedData = await compressImage(file, qualitySlider.value / 100);
-        const response = await fetch(compressedData);
-        const blob = await response.blob();
-        folder.file(file.name, blob, { binary: true });
-      });
-
-      await Promise.all(promises);
-
-      // Generate the ZIP file
-      zip.generateAsync({ type: "blob" })
-        .then(function(content) {
-          // Save the ZIP file with current date and time
-          const now = new Date();
-          const date = now.toISOString().slice(0, 10); // YYYY-MM-DD
-          const time = now.toTimeString().slice(0, 8).replace(/:/g, '-'); // HH-MM-SS
-          const filename = `compressed_images_${date}_${time}.zip`;
-          saveAs(content, filename);
-          feedbackMessage.textContent = "Images compressed successfully!";
-        });
-    });
-
-    // Update quality value display
-    document.getElementById('qualitySlider').addEventListener('input', function() {
-      document.getElementById('qualityValue').textContent = this.value + "%";
-    });
-
-    // Toggle dropdown menu visibility
-    document.getElementById('dropdownButton').addEventListener('click', () => {
-      const dropdownMenu = document.getElementById('dropdownMenu');
-      dropdownMenu.classList.toggle('hidden');
-    });
-
-    // Close dropdown menu when clicking outside
-    window.addEventListener('click', (event) => {
-      const dropdownMenu = document.getElementById('dropdownMenu');
-      if (!dropdownMenu.contains(event.target) && !document.getElementById('dropdownButton').contains(event.target)) {
-        dropdownMenu.classList.add('hidden');
-      }
-    });
-  </script>
+        // Render the scanner with success and failure callbacks
+        qrCodeScanner.render(onScanSuccess, onScanFailure);
+    </script>
 
 </body>
 </html>
