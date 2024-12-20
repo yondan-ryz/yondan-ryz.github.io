@@ -13,56 +13,56 @@
     <p id="prediction"></p>
 
     <script>
-        // Fungsi untuk memuat model TensorFlow.js
+        // Function to load the TensorFlow.js model
         async function loadModel() {
-            // Ganti dengan path model.json yang sesuai (pastikan model.json dan group1-shard1of1.bin berada di folder yang sama atau dapat diakses)
+            // Load the model from the model.json file
             const model = await tf.loadLayersModel('models/model.json');
             console.log('Model loaded successfully!');
             return model;
         }
 
-        // Fungsi untuk memproses gambar dan membuat prediksi
+        // Function to process the uploaded image and make predictions
         async function predictImage() {
             const fileInput = document.getElementById('image-upload');
             const imageElement = document.getElementById('uploaded-image');
             const predictionElement = document.getElementById('prediction');
 
             if (fileInput.files.length > 0) {
-                // Tampilkan gambar yang diunggah
+                // Display the uploaded image
                 const imageFile = fileInput.files[0];
                 imageElement.src = URL.createObjectURL(imageFile);
 
-                // Persiapkan gambar untuk prediksi
+                // Prepare image for prediction
                 const img = new Image();
                 img.src = URL.createObjectURL(imageFile);
                 img.onload = async function () {
-                    // Mengubah gambar menjadi tensor dan melakukan resize
+                    // Convert image to tensor, resize, and normalize
                     const tensor = tf.browser.fromPixels(img)
-                        .resizeNearestNeighbor([150, 150]) // Ukuran yang sesuai dengan model
-                        .toFloat()
-                        .expandDims();
+                        .resizeNearestNeighbor([150, 150]) // Resize image to match model input
+                        .toFloat()  // Convert to float32
+                        .expandDims(0);  // Add batch dimension: (1, 150, 150, 3)
 
-                    // Memuat model dan melakukan prediksi
+                    // Load the model and make the prediction
                     const model = await loadModel();
                     const prediction = model.predict(tensor);
 
-                    // Ambil kelas dengan probabilitas tertinggi
+                    // Get the class index with the highest probability
                     const predictedClassIndex = prediction.argMax(-1).dataSync()[0];
 
-                    // Ganti dengan pemetaan kelas yang sesuai
+                    // Define the class mapping (adjust according to your model's classes)
                     const classMapping = {
                         0: "Cat",
                         1: "Dog",
-                        2: "Bird" // Ganti dengan kelas yang sesuai
+                        2: "Bird"  // Replace with your model's actual class labels
                     };
 
-                    // Tampilkan hasil prediksi
-                    predictionElement.innerText = `Prediksi kelas: ${classMapping[predictedClassIndex]}`;
+                    // Display the predicted class label
+                    predictionElement.innerText = `Predicted Class: ${classMapping[predictedClassIndex]}`;
                 };
             }
         }
 
-        // Event listener untuk memproses gambar saat diupload
+        // Event listener to trigger image processing when a file is uploaded
         document.getElementById('image-upload').addEventListener('change', predictImage);
     </script>
 </body>
