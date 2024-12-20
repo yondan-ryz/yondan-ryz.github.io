@@ -15,8 +15,8 @@
     <script>
         // Function to load the TensorFlow.js model
         async function loadModel() {
-            // Load the model from the model.json file
-            const model = await tf.loadLayersModel('models/model.json');
+            // Load the model from the model.json file in the 'public' directory
+            const model = await tf.loadLayersModel('/models/model.json');
             console.log('Model loaded successfully!');
             return model;
         }
@@ -36,11 +36,11 @@
                 const img = new Image();
                 img.src = URL.createObjectURL(imageFile);
                 img.onload = async function () {
-                    // Convert image to tensor, resize, and normalize
+                    // Convert image to tensor, resize, and normalize to 256x256
                     const tensor = tf.browser.fromPixels(img)
-                        .resizeNearestNeighbor([150, 150]) // Resize image to match model input
+                        .resizeNearestNeighbor([256, 256]) // Resize image to match model input of 256x256
                         .toFloat()  // Convert to float32
-                        .expandDims(0);  // Add batch dimension: (1, 150, 150, 3)
+                        .expandDims(0);  // Add batch dimension: (1, 256, 256, 3)
 
                     // Load the model and make the prediction
                     const model = await loadModel();
@@ -50,11 +50,7 @@
                     const predictedClassIndex = prediction.argMax(-1).dataSync()[0];
 
                     // Define the class mapping (adjust according to your model's classes)
-                    const classMapping = {
-                        0: "Cat",
-                        1: "Dog",
-                        2: "Bird"  // Replace with your model's actual class labels
-                    };
+                    const classMapping = {"0": "animal dog afghan", "1": "animal dog african_wild_dog", "2": "animal dog airedale", "3": "animal dog american_bulldog", "4": "animal dog american_hairless", "5": "animal dog american_spaniel", "6": "animal dog basenji", "7": "animal dog basset", "8": "animal dog basset_hound", "9": "animal dog beagle", "10": "animal dog bearded_collie", "11": "animal dog bermaise"};
 
                     // Display the predicted class label
                     predictionElement.innerText = `Predicted Class: ${classMapping[predictedClassIndex]}`;
