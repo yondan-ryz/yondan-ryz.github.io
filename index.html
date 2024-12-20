@@ -16,7 +16,7 @@
         // Fungsi untuk memuat model TensorFlow.js
         async function loadModel() {
             // Ganti dengan path model.json yang sesuai (pastikan model.json dan group1-shard1of1.bin berada di folder yang sama atau dapat diakses)
-            const model = await tf.loadLayersModel('model/model.json');
+            const model = await tf.loadLayersModel('models/model.json');
             console.log('Model loaded successfully!');
             return model;
         }
