@@ -3,90 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emotion Detection with TensorFlow.js</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 20px;
-        }
-        canvas {
-            border: 2px solid black;
-        }
-        #result {
-            font-size: 24px;
-            font-weight: bold;
-        }
-    </style>
+    <title>Dog Classification with TensorFlow.js</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 </head>
 <body>
-    <h1>Emotion Detection using TensorFlow.js</h1>
-    <input type="file" id="inputImage" accept="image/*">
-    <br><br>
-    <canvas id="canvas"></canvas>
-    <div id="result"></div>
-
-    <!-- Memuat pustaka TensorFlow.js -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <h1>Dog Classification</h1>
+    <input type="file" id="image-upload" />
+    <img id="uploaded-image" width="150" />
+    <p id="prediction"></p>
 
     <script>
-        // Fungsi untuk memuat model yang sudah dikonversi
+        // Fungsi untuk memuat model TensorFlow.js
         async function loadModel() {
-            const model = await tf.loadLayersModel('models/model.json');
-            console.log('Emotion model loaded');
+            // Ganti dengan path model.json yang sesuai (pastikan model.json dan group1-shard1of1.bin berada di folder yang sama atau dapat diakses)
+            const model = await tf.loadLayersModel('model/model.json');
+            console.log('Model loaded successfully!');
             return model;
         }
 
-        // Fungsi untuk mendeteksi ekspresi wajah
-        async function detectEmotion() {
-            const input = document.getElementById('inputImage').files[0];
-            if (!input) return;
+        // Fungsi untuk memproses gambar dan membuat prediksi
+        async function predictImage() {
+            const fileInput = document.getElementById('image-upload');
+            const imageElement = document.getElementById('uploaded-image');
+            const predictionElement = document.getElementById('prediction');
 
-            const image = await loadImage(input);
-            const canvas = document.getElementById('canvas');
-            const displaySize = { width: image.width, height: image.height };
-            canvas.width = displaySize.width;
-            canvas.height = displaySize.height;
+            if (fileInput.files.length > 0) {
+                // Tampilkan gambar yang diunggah
+                const imageFile = fileInput.files[0];
+                imageElement.src = URL.createObjectURL(imageFile);
 
-            const context = canvas.getContext('2d');
-            context.drawImage(image, 0, 0, displaySize.width, displaySize.height);
+                // Persiapkan gambar untuk prediksi
+                const img = new Image();
+                img.src = URL.createObjectURL(imageFile);
+                img.onload = async function () {
+                    // Mengubah gambar menjadi tensor dan melakukan resize
+                    const tensor = tf.browser.fromPixels(img)
+                        .resizeNearestNeighbor([150, 150]) // Ukuran yang sesuai dengan model
+                        .toFloat()
+                        .expandDims();
 
-            // Proses gambar untuk prediksi ekspresi wajah
-            const tensorImage = tf.browser.fromPixels(image);
-            const resized = tf.image.resizeBilinear(tensorImage, [64, 64]);
-            const normalized = resized.div(tf.scalar(255)).expandDims(0);
+                    // Memuat model dan melakukan prediksi
+                    const model = await loadModel();
+                    const prediction = model.predict(tensor);
 
-            // Prediksi ekspresi wajah
-            const predictions = await model.predict(normalized).data();
+                    // Ambil kelas dengan probabilitas tertinggi
+                    const predictedClassIndex = prediction.argMax(-1).dataSync()[0];
 
-            // Mendapatkan ekspresi dengan probabilitas tertinggi
-            const emotions = ['Anger', 'Disgust', 'Fear', 'Happiness', 'Sadness', 'Surprise', 'Neutral'];
-            const maxIndex = predictions.indexOf(Math.max(...predictions));
-            const emotion = emotions[maxIndex];
+                    // Ganti dengan pemetaan kelas yang sesuai
+                    const classMapping = {
+                        0: "Cat",
+                        1: "Dog",
+                        2: "Bird" // Ganti dengan kelas yang sesuai
+                    };
 
-            // Tampilkan hasil prediksi
-            document.getElementById('result').textContent = `Predicted Emotion: ${emotion}`;
-        }
-
-        // Fungsi untuk memuat gambar dari file input
-        function loadImage(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const img = new Image();
-                    img.src = reader.result;
-                    img.onload = () => resolve(img);
-                    img.onerror = (err) => reject(err);
+                    // Tampilkan hasil prediksi
+                    predictionElement.innerText = `Prediksi kelas: ${classMapping[predictedClassIndex]}`;
                 };
-                reader.readAsDataURL(file);
-            });
+            }
         }
 
-        // Inisialisasi model ketika halaman dimuat
-        window.onload = async () => {
-            const model = await loadModel();
-            document.getElementById('inputImage').addEventListener('change', detectEmotion);
-        };
+        // Event listener untuk memproses gambar saat diupload
+        document.getElementById('image-upload').addEventListener('change', predictImage);
     </script>
 </body>
 </html>
