@@ -38,7 +38,7 @@
                 img.onload = async function () {
                     // Convert image to tensor, resize, and normalize to 256x256
                     const tensor = tf.browser.fromPixels(img)
-                        .resizeNearestNeighbor([256, 256]) // Resize image to match model input of 256x256
+                        .resizeNearestNeighbor([150, 150]) // Resize image to match model input of 256x256
                         .toFloat()  // Convert to float32
                         .expandDims(0);  // Add batch dimension: (1, 256, 256, 3)
 
