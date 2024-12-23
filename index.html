@@ -12,21 +12,17 @@
     <br>
     <img id="uploaded-image" width="150" alt="Uploaded Image" style="margin-top: 10px; display: none;" />
     <p id="prediction" style="font-weight: bold; margin-top: 10px;"></p>
-    <p id="loading" style="font-weight: bold; color: #007bff; display: none;">Loading model...</p>
 
     <script>
         // Function to load the TensorFlow.js model
         async function loadModel() {
             try {
-                document.getElementById('loading').style.display = 'block'; // Show loading text
                 const model = await tf.loadLayersModel('/models/model.json');
                 console.log('Model loaded successfully!');
-                document.getElementById('loading').style.display = 'none'; // Hide loading text
                 return model;
             } catch (error) {
-                document.getElementById('loading').style.display = 'none'; // Hide loading text
-                alert("Error loading model: " + error.message);
-                console.error("Error loading model:", error);
+                console.error('Error loading model:', error);
+                alert('Error loading model. Please check the model path and try again.');
             }
         }
 
@@ -56,7 +52,7 @@
                     // Load the model and make predictions
                     const model = await loadModel();
                     if (model) {
-                        const prediction = model.predict(tensor);
+                        const prediction = model.predict(tensor, {training: false}); // Ensure dropout is disabled
 
                         // Get the class index with the highest probability
                         const predictedClassIndex = prediction.argMax(-1).dataSync()[0];
