@@ -8,14 +8,14 @@
 </head>
 <body>
     <h1>Dog Classification</h1>
-    <input type="file" id="image-upload" />
-    <img id="uploaded-image" width="150" />
-    <p id="prediction"></p>
+    <input type="file" id="image-upload" accept="image/*" />
+    <br>
+    <img id="uploaded-image" width="150" alt="Uploaded Image" style="margin-top: 10px; display: none;" />
+    <p id="prediction" style="font-weight: bold; margin-top: 10px;"></p>
 
     <script>
         // Function to load the TensorFlow.js model
         async function loadModel() {
-            // Load the model from the model.json file in the 'public' directory
             const model = await tf.loadLayersModel('/models/model.json');
             console.log('Model loaded successfully!');
             return model;
@@ -28,32 +28,47 @@
             const predictionElement = document.getElementById('prediction');
 
             if (fileInput.files.length > 0) {
-                // Display the uploaded image
                 const imageFile = fileInput.files[0];
                 imageElement.src = URL.createObjectURL(imageFile);
+                imageElement.style.display = 'block'; // Display the uploaded image
 
-                // Prepare image for prediction
                 const img = new Image();
                 img.src = URL.createObjectURL(imageFile);
                 img.onload = async function () {
-                    // Convert image to tensor, resize, and normalize to 256x256
+                    // Preprocess the image: resize, normalize, and add batch dimension
                     const tensor = tf.browser.fromPixels(img)
-                        .resizeNearestNeighbor([150, 150]) // Resize image to match model input of 256x256
-                        .toFloat()  // Convert to float32
-                        .expandDims(0);  // Add batch dimension: (1, 256, 256, 3)
+                        .resizeNearestNeighbor([150, 150]) // Resize to 150x150 as per model requirement
+                        .toFloat()
+                        .div(255.0) // Normalize pixel values to [0, 1]
+                        .expandDims(0); // Add batch dimension
 
-                    // Load the model and make the prediction
+                    console.log('Input Tensor Shape:', tensor.shape);
+
+                    // Load the model and make predictions
                     const model = await loadModel();
                     const prediction = model.predict(tensor);
 
                     // Get the class index with the highest probability
                     const predictedClassIndex = prediction.argMax(-1).dataSync()[0];
 
-                    // Define the class mapping (adjust according to your model's classes)
-                    const classMapping = {"0": "animal dog afghan", "1": "animal dog african_wild_dog", "2": "animal dog airedale", "3": "animal dog american_bulldog", "4": "animal dog american_hairless", "5": "animal dog american_spaniel", "6": "animal dog basenji", "7": "animal dog basset", "8": "animal dog basset_hound", "9": "animal dog beagle", "10": "animal dog bearded_collie", "11": "animal dog bermaise"};
+                    // Define class mapping (adjust as per your model's classes)
+                    const classMapping = {
+                        "0": "Afghan Hound",
+                        "1": "African Wild Dog",
+                        "2": "Airedale",
+                        "3": "American Bulldog",
+                        "4": "American Hairless",
+                        "5": "American Spaniel",
+                        "6": "Basenji",
+                        "7": "Basset",
+                        "8": "Basset Hound",
+                        "9": "Beagle",
+                        "10": "Bearded Collie",
+                        "11": "Bernese Mountain Dog"
+                    };
 
                     // Display the predicted class label
-                    predictionElement.innerText = `Predicted Class: ${classMapping[predictedClassIndex]}`;
+                    predictionElement.innerText = `Predicted Class: ${classMapping[predictedClassIndex] || 'Unknown'}`;
                 };
             }
         }
