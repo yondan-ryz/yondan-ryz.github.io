@@ -12,13 +12,22 @@
     <br>
     <img id="uploaded-image" width="150" alt="Uploaded Image" style="margin-top: 10px; display: none;" />
     <p id="prediction" style="font-weight: bold; margin-top: 10px;"></p>
+    <p id="loading" style="font-weight: bold; color: #007bff; display: none;">Loading model...</p>
 
     <script>
         // Function to load the TensorFlow.js model
         async function loadModel() {
-            const model = await tf.loadLayersModel('/models/model.json');
-            console.log('Model loaded successfully!');
-            return model;
+            try {
+                document.getElementById('loading').style.display = 'block'; // Show loading text
+                const model = await tf.loadLayersModel('/models/model.json');
+                console.log('Model loaded successfully!');
+                document.getElementById('loading').style.display = 'none'; // Hide loading text
+                return model;
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none'; // Hide loading text
+                alert("Error loading model: " + error.message);
+                console.error("Error loading model:", error);
+            }
         }
 
         // Function to process the uploaded image and make predictions
@@ -46,29 +55,31 @@
 
                     // Load the model and make predictions
                     const model = await loadModel();
-                    const prediction = model.predict(tensor);
+                    if (model) {
+                        const prediction = model.predict(tensor);
 
-                    // Get the class index with the highest probability
-                    const predictedClassIndex = prediction.argMax(-1).dataSync()[0];
+                        // Get the class index with the highest probability
+                        const predictedClassIndex = prediction.argMax(-1).dataSync()[0];
 
-                    // Define class mapping (adjust as per your model's classes)
-                    const classMapping = {
-                        "0": "Afghan Hound",
-                        "1": "African Wild Dog",
-                        "2": "Airedale",
-                        "3": "American Bulldog",
-                        "4": "American Hairless",
-                        "5": "American Spaniel",
-                        "6": "Basenji",
-                        "7": "Basset",
-                        "8": "Basset Hound",
-                        "9": "Beagle",
-                        "10": "Bearded Collie",
-                        "11": "Bernese Mountain Dog"
-                    };
+                        // Define class mapping (adjust as per your model's classes)
+                        const classMapping = {
+                            "0": "Afghan Hound",
+                            "1": "African Wild Dog",
+                            "2": "Airedale",
+                            "3": "American Bulldog",
+                            "4": "American Hairless",
+                            "5": "American Spaniel",
+                            "6": "Basenji",
+                            "7": "Basset",
+                            "8": "Basset Hound",
+                            "9": "Beagle",
+                            "10": "Bearded Collie",
+                            "11": "Bernese Mountain Dog"
+                        };
 
-                    // Display the predicted class label
-                    predictionElement.innerText = `Predicted Class: ${classMapping[predictedClassIndex] || 'Unknown'}`;
+                        // Display the predicted class label
+                        predictionElement.innerText = `Predicted Class: ${classMapping[predictedClassIndex] || 'Unknown'}`;
+                    }
                 };
             }
         }
