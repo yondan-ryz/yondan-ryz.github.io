@@ -12,6 +12,7 @@
     <br>
     <img id="uploaded-image" width="150" alt="Uploaded Image" style="margin-top: 10px; display: none;" />
     <p id="prediction" style="font-weight: bold; margin-top: 10px;"></p>
+    <div id="probabilities" style="margin-top: 20px;"></div>
 
     <script>
         // Function to load the TensorFlow.js model
@@ -31,6 +32,7 @@
             const fileInput = document.getElementById('image-upload');
             const imageElement = document.getElementById('uploaded-image');
             const predictionElement = document.getElementById('prediction');
+            const probabilitiesElement = document.getElementById('probabilities');
 
             if (fileInput.files.length > 0) {
                 const imageFile = fileInput.files[0];
@@ -54,6 +56,10 @@
                     if (model) {
                         const prediction = model.predict(tensor, {training: false}); // Ensure dropout is disabled
 
+                        // Get the probabilities for each class
+                        const probabilities = prediction.dataSync(); // Array of probabilities for each class
+                        console.log('Prediction Probabilities:', probabilities);
+
                         // Get the class index with the highest probability
                         const predictedClassIndex = prediction.argMax(-1).dataSync()[0];
 
@@ -75,6 +81,13 @@
 
                         // Display the predicted class label
                         predictionElement.innerText = `Predicted Class: ${classMapping[predictedClassIndex] || 'Unknown'}`;
+
+                        // Display the probabilities for each class
+                        let probabilitiesText = '<b>Class Probabilities:</b><br>';
+                        for (let i = 0; i < probabilities.length; i++) {
+                            probabilitiesText += `${classMapping[i] || `Class ${i}`} : ${(probabilities[i] * 100).toFixed(2)}%<br>`;
+                        }
+                        probabilitiesElement.innerHTML = probabilitiesText;
                     }
                 };
             }
