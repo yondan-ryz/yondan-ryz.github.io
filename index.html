@@ -1,72 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prediksi Gambar dengan TensorFlow.js</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TensorFlow.js Model</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
 </head>
 <body>
+  <h1>Prediksi Model Keras dengan TensorFlow.js</h1>
+  <input type="file" id="imageUpload" accept="image/*" />
+  <br />
+  <button onclick="predict()">Prediksi</button>
+  <p id="result"></p>
 
-<h1>Prediksi Gambar dengan TensorFlow.js</h1>
-
-<!-- Input untuk memilih gambar -->
-<input type="file" id="imageInput" accept="image/*">
-<br><br>
-
-<!-- Tempat untuk menampilkan gambar yang dipilih -->
-<img id="image" width="200" height="200" style="display:none;">
-<br><br>
-
-<!-- Tempat untuk menampilkan hasil prediksi -->
-<div id="predictionResult"></div>
-
-<script>
-  async function loadModel() {
-    try {
-      // Memuat model TensorFlow.js
-      const model = await tf.loadLayersModel('models/model.json');
-      console.log('Model berhasil dimuat');
-
-      // Menunggu gambar dari pengguna
-      document.getElementById('imageInput').addEventListener('change', handleImageUpload);
-
-      // Fungsi untuk memproses gambar dan melakukan prediksi
-      async function handleImageUpload(event) {
-        const file = event.target.files[0];
-        if (file) {
-          const imgElement = document.getElementById('image');
-          imgElement.src = URL.createObjectURL(file);
-          imgElement.style.display = 'block';
-
-          // Menunggu gambar dimuat
-          imgElement.onload = async () => {
-            // Mengubah gambar menjadi tensor dan meresize
-            const imageTensor = tf.browser.fromPixels(imgElement)
-              .resizeNearestNeighbor([200, 200]) // Resize sesuai input model (200x200)
-              .toFloat()
-              .expandDims(3); // Tambahkan dimensi batch (1, 200, 200, 3)
-
-            // Melakukan prediksi
-            const prediction = model.predict(imageTensor);
-
-            // Menampilkan hasil prediksi
-            prediction.array().then(predictionArray => {
-              const resultElement = document.getElementById('predictionResult');
-              resultElement.innerHTML = `Prediksi: ${predictionArray[0]}`;
-            });
-          };
-        }
-      }
-
-    } catch (error) {
-      console.error('Terjadi kesalahan saat memuat model:', error);
-    }
-  }
-
-  // Memuat model saat halaman dimuat
-  loadModel();
-</script>
-
+  <script src="app.js"></script>
 </body>
+<script>
+
+let model;
+
+// Memuat model dan bobot
+async function loadModel() {
+  model = await tf.loadLayersModel('model.json');  // Ganti dengan path model.json Anda
+  console.log("Model Loaded Successfully");
+}
+
+// Menyiapkan input dan memproses gambar
+async function processImage(file) {
+  const img = new Image();
+  img.src = URL.createObjectURL(file);
+  
+  return new Promise((resolve, reject) => {
+    img.onload = () => {
+      // Membuat tensor dengan ukuran yang sesuai dengan input model [200, 200, 3]
+      const tensor = tf.browser.fromPixels(img)
+        .resizeNearestNeighbor([200, 200]) // Resize gambar ke 200x200
+        .toFloat()
+        .div(tf.scalar(255))  // Normalisasi ke rentang [0, 1]
+        .expandDims();  // Menambahkan dimensi batch [1, 200, 200, 3]
+      
+      resolve(tensor);
+    };
+    img.onerror = (err) => reject(err);
+  });
+}
+
+// Prediksi gambar
+async function predict() {
+  const fileInput = document.getElementById('imageUpload');
+  const file = fileInput.files[0];
+  
+  if (file && model) {
+    try {
+      const tensor = await processImage(file);
+      const prediction = model.predict(tensor);
+      const output = prediction.dataSync();  // Mengambil hasil prediksi
+
+      // Menampilkan hasil prediksi
+      document.getElementById('result').innerText = `Prediksi: ${output}`;
+    } catch (error) {
+      console.error("Terjadi kesalahan saat memproses gambar:", error);
+    }
+  } else {
+    alert("Model atau gambar belum dimuat.");
+  }
+}
+
+// Muat model saat halaman dibuka
+loadModel();
+</script>
 </html>
