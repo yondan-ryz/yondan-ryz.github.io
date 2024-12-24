@@ -14,29 +14,50 @@
   <p id="prediction">Prediction will be displayed here</p>
 
   <script>
-    // Muat model MobileNet dari TensorFlow.js
     let model;
 
+    // Muat model MobileNet secara asinkron
     async function loadModel() {
-      model = await mobilenet.load();
-      console.log('Model loaded');
+      try {
+        model = await mobilenet.load();
+        console.log('Model loaded');
+      } catch (error) {
+        console.error('Error loading model:', error);
+      }
     }
 
     // Fungsi untuk memprediksi gambar yang diupload
     async function classifyImage() {
+      if (!model) {
+        console.log('Model is not loaded yet');
+        return;
+      }
       const imageElement = document.getElementById('image');
-      const prediction = await model.classify(imageElement);
-      document.getElementById('prediction').innerText = `Prediction: ${prediction[0].className} with ${prediction[0].probability.toFixed(3)}`;
+      try {
+        const prediction = await model.classify(imageElement);
+        document.getElementById('prediction').innerText = `Prediction: ${prediction[0].className} with ${prediction[0].probability.toFixed(3)}`;
+      } catch (error) {
+        console.error('Error classifying image:', error);
+      }
     }
 
     // Event listener untuk input gambar
     document.getElementById('image-input').addEventListener('change', function(event) {
       const file = event.target.files[0];
+      if (!file) return;
+
       const reader = new FileReader();
       reader.onload = function(e) {
         const imageElement = document.getElementById('image');
         imageElement.src = e.target.result;
-        imageElement.onload = classifyImage;
+        imageElement.onload = function() {
+          // Hanya klasifikasikan gambar jika model sudah siap
+          if (model) {
+            classifyImage();
+          } else {
+            console.log('Model is still loading');
+          }
+        };
       };
       reader.readAsDataURL(file);
     });
