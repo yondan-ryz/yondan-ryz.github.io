@@ -19,7 +19,7 @@
     // Fungsi untuk memuat model
     async function loadModel() {
       try {
-        const model = await tf.loadLayersModel('path/to/model.json');
+        const model = await tf.loadLayersModel('models/model.json');
         console.log('Model berhasil dimuat');
         return model;
       } catch (error) {
