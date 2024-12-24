@@ -1,96 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Load and Predict with TensorFlow.js Model</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prediksi Gambar dengan TensorFlow.js</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 </head>
 <body>
-    <h1>TensorFlow.js Model Loading and Prediction</h1>
-    <input type="file" id="imageInput" accept="image/*">
-    <canvas id="canvas" width="200" height="200"></canvas>
-    <script>
-        let model;
 
-        // Fungsi untuk memuat model dari path model.json
-        async function loadModel() {
-            try {
-                // Memuat model yang sudah dikonversi ke TensorFlow.js
-                model = await tf.loadLayersModel('/models/model.json');
-                console.log('Model berhasil dimuat.');
-                
-                // Memastikan bahwa model memiliki input layer yang benar
-                const inputLayer = model.layers[0]; // Input layer pertama
-                if (!inputLayer.batchInputShape) {
-                    console.log('Menetapkan input shape secara manual...');
-                    inputLayer.batchInputShape = [null, 200, 200, 3]; // Input shape yang benar [null, 200, 200, 3]
-                }
-                
-                console.log('Input shape model: ', inputLayer.batchInputShape);
-            } catch (error) {
-                console.error('Terjadi kesalahan saat memuat model:', error);
-                alert('Model gagal dimuat. Pastikan jalur model sudah benar.');
-            }
-        }
+  <h1>Prediksi Gambar dengan Model TensorFlow.js</h1>
 
-        // Fungsi untuk memproses gambar dari input file
-        function handleImageUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.onload = function() {
-                        const canvas = document.getElementById('canvas');
-                        const ctx = canvas.getContext('2d');
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  <input type="file" id="image-upload" accept="image/*" />
+  <br/>
+  <canvas id="canvas"></canvas>
+  <br/>
+  <button id="predict-button">Prediksi</button>
+  <br/>
+  <p id="prediction-result">Hasil prediksi: </p>
 
-                        // Konversi gambar ke tensor
-                        const imageTensor = tf.browser.fromPixels(canvas)
-                            .resizeNearestNeighbor([200, 200])  // Mengubah ukuran gambar menjadi 200x200
-                            .toFloat()
-                            .div(tf.scalar(255));  // Normalisasi gambar ke rentang [0, 1]
-                        
-                        // Prediksi dengan model
-                        predictImage(imageTensor);
-                    };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        }
+  <script>
+    let model;
 
-        // Fungsi untuk melakukan prediksi
-        async function predictImage(imageTensor) {
-            if (!model) {
-                console.error('Model belum dimuat!');
-                return;
-            }
+    // Fungsi untuk memuat model
+    async function loadModel() {
+      try {
+        // Memuat model dari server (sesuaikan dengan lokasi model Anda)
+        model = await tf.loadLayersModel('/models/model.json');
+        console.log("Model berhasil dimuat");
+      } catch (error) {
+        console.error("Terjadi kesalahan saat memuat model: ", error);
+      }
+    }
 
-            // Menambahkan batch dimension (batch size = 1)
-            const batchedImage = imageTensor.expandDims(0);
-            
-            // Melakukan prediksi
-            const predictions = await model.predict(batchedImage);
-            
-            // Menampilkan hasil prediksi
-            predictions.print();
+    // Fungsi untuk memproses gambar yang diunggah
+    function processImage(file) {
+      const image = new Image();
+      image.onload = function () {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        ctx.drawImage(image, 0, 0);
 
-            // Menampilkan prediksi dengan label
-            const predictedClass = predictions.argMax(-1).dataSync()[0];
-            console.log('Predicted class:', predictedClass);
-            alert('Prediksi selesai. Kelas terprediksi: ' + predictedClass);
-        }
+        // Mengonversi gambar ke tensor dan menyesuaikan bentuknya
+        let imgTensor = tf.browser.fromPixels(canvas);
+        imgTensor = imgTensor.resizeBilinear([200, 200]); // Sesuaikan ukuran gambar sesuai dengan model
+        imgTensor = imgTensor.expandDims(0); // Menambahkan dimensi batch
 
-        // Menambahkan event listener untuk input gambar
-        document.getElementById('imageInput').addEventListener('change', handleImageUpload);
+        return imgTensor;
+      };
+      image.src = URL.createObjectURL(file);
+    }
 
-        // Memuat model saat halaman dimuat
-        window.onload = function() {
-            loadModel();
-        };
-    </script>
+    // Fungsi untuk melakukan prediksi
+    async function makePrediction() {
+      const imageFile = document.getElementById('image-upload').files[0];
+      if (!imageFile) {
+        alert("Silakan unggah gambar terlebih dahulu.");
+        return;
+      }
+
+      const imgTensor = processImage(imageFile);
+
+      const prediction = await model.predict(imgTensor);
+      const predictedClass = prediction.argMax(-1).dataSync()[0]; // Ambil kelas dengan probabilitas tertinggi
+      document.getElementById('prediction-result').textContent = 'Hasil prediksi: Kelas ' + predictedClass;
+    }
+
+    // Event Listener untuk tombol prediksi
+    document.getElementById('predict-button').addEventListener('click', makePrediction);
+
+    // Memuat model saat halaman dimuat
+    loadModel();
+  </script>
+
 </body>
 </html>
