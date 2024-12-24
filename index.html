@@ -2,7 +2,8 @@
 <html>
 <head>
     <title>Image Classification</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.16.0/tf.min.js"></script>
+    <!-- Menggunakan versi spesifik TensorFlow.js yang kompatibel -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0/dist/tf.min.js"></script>
     <style>
         .container {
             max-width: 800px;
@@ -29,6 +30,11 @@
         .error {
             color: red;
         }
+        #modelInfo {
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
     </style>
 </head>
 <body>
@@ -39,6 +45,7 @@
         <br>
         <img id="imagePreview" style="display: none;">
         <div id="status" class="loading">Memuat model...</div>
+        <div id="modelInfo"></div>
         <div id="output" class="result"></div>
         <div id="prediction" class="prediction"></div>
     </div>
@@ -47,6 +54,7 @@
         let model = null;
         const imageUploadInput = document.getElementById('imageUpload');
         const statusDiv = document.getElementById('status');
+        const modelInfoDiv = document.getElementById('modelInfo');
 
         // Fungsi untuk memuat model
         async function loadModel() {
@@ -54,16 +62,42 @@
                 statusDiv.textContent = 'Memuat model...';
                 imageUploadInput.disabled = true;
 
-                // Ganti dengan path ke model Anda
-                model = await tf.loadGraphModel('models/model.json');
-                
+                // Pastikan TensorFlow.js dimuat
+                if (!tf) {
+                    throw new Error('TensorFlow.js tidak dimuat dengan benar');
+                }
+
+                // Tampilkan versi TensorFlow.js
+                modelInfoDiv.textContent = `TensorFlow.js Version: ${tf.version.tfjs}`;
+
+                // Muat model dengan error handling yang lebih baik
+                const modelPath = 'models/model.json';
+                try {
+                    // Coba load sebagai graph model
+                    model = await tf.loadGraphModel(modelPath);
+                } catch (graphError) {
+                    console.error('Error loading as graph model:', graphError);
+                    // Jika gagal, coba load sebagai layered model
+                    try {
+                        model = await tf.loadLayersModel(modelPath);
+                    } catch (layeredError) {
+                        throw new Error(`Failed to load model: ${graphError.message}\nAlso failed as layers model: ${layeredError.message}`);
+                    }
+                }
+
                 console.log('Model berhasil dimuat!');
+                modelInfoDiv.textContent += '\nModel berhasil dimuat';
+                if (model.inputShape) {
+                    modelInfoDiv.textContent += `\nInput shape: ${JSON.stringify(model.inputShape)}`;
+                }
                 statusDiv.textContent = 'Model siap digunakan';
                 imageUploadInput.disabled = false;
+
             } catch (error) {
                 console.error('Error loading model:', error);
                 statusDiv.textContent = 'Error loading model: ' + error.message;
                 statusDiv.className = 'error';
+                modelInfoDiv.textContent += '\nError details: ' + JSON.stringify(error, null, 2);
             }
         }
 
@@ -81,10 +115,12 @@
         async function predict(img) {
             try {
                 // Konversi gambar ke tensor dengan ukuran yang sesuai (200x200)
-                let tensor = tf.browser.fromPixels(img)
-                    .resizeBilinear([200, 200]) // Sesuai dengan input shape model
-                    .div(255.0)                 // Normalisasi nilai pixel (0-1)
-                    .expandDims();              // Tambahkan dimensi batch
+                let tensor = tf.tidy(() => {
+                    const imageTensor = tf.browser.fromPixels(img)
+                    const resized = tf.image.resizeBilinear(imageTensor, [200, 200])
+                    const normalized = resized.div(255.0)
+                    return normalized.expandDims(0)
+                });
 
                 console.log('Input tensor shape:', tensor.shape);
 
