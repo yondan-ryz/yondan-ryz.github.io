@@ -3,98 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dog Classification with TensorFlow.js</title>
+    <title>Load and Predict with TensorFlow.js Model</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 </head>
 <body>
-    <h1>Dog Classification</h1>
-    <input type="file" id="image-upload" accept="image/*" />
-    <br>
-    <img id="uploaded-image" width="200" alt="Uploaded Image" style="margin-top: 10px; display: none;" />
-    <p id="prediction" style="font-weight: bold; margin-top: 10px;"></p>
-    <div id="probabilities" style="margin-top: 20px;"></div>
-
+    <h1>TensorFlow.js Model Loading and Prediction</h1>
+    <input type="file" id="imageInput" accept="image/*">
+    <canvas id="canvas" width="200" height="200"></canvas>
     <script>
-        // Function to load the TensorFlow.js model
+        let model;
+
+        // Fungsi untuk memuat model dari path model.json
         async function loadModel() {
             try {
-                const model = await tf.loadLayersModel('/models/model.json');
-                console.log('Model loaded successfully!');
-                return model;
+                // Memuat model yang sudah dikonversi ke TensorFlow.js
+                model = await tf.loadLayersModel('/models/model.json');
+                console.log('Model berhasil dimuat.');
+                
+                // Memastikan bahwa model memiliki input layer yang benar
+                const inputLayer = model.layers[0]; // Input layer pertama
+                if (!inputLayer.batchInputShape) {
+                    console.log('Menetapkan input shape secara manual...');
+                    inputLayer.batchInputShape = [null, 200, 200, 3]; // Input shape yang benar [null, 200, 200, 3]
+                }
+                
+                console.log('Input shape model: ', inputLayer.batchInputShape);
             } catch (error) {
-                console.error('Error loading model:', error);
-                alert('Error loading model. Please check the model path and try again.');
+                console.error('Terjadi kesalahan saat memuat model:', error);
+                alert('Model gagal dimuat. Pastikan jalur model sudah benar.');
             }
         }
 
-        // Function to process the uploaded image and make predictions
-        async function predictImage() {
-            const fileInput = document.getElementById('image-upload');
-            const imageElement = document.getElementById('uploaded-image');
-            const predictionElement = document.getElementById('prediction');
-            const probabilitiesElement = document.getElementById('probabilities');
+        // Fungsi untuk memproses gambar dari input file
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.getElementById('canvas');
+                        const ctx = canvas.getContext('2d');
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-            if (fileInput.files.length > 0) {
-                const imageFile = fileInput.files[0];
-                imageElement.src = URL.createObjectURL(imageFile);
-                imageElement.style.display = 'block'; // Display the uploaded image
-
-                const img = new Image();
-                img.src = URL.createObjectURL(imageFile);
-                img.onload = async function () {
-                    // Preprocess the image: resize to 200x200, normalize, and add batch dimension
-                    const tensor = tf.browser.fromPixels(img)
-                        .resizeNearestNeighbor([200, 200]) // Resize to 200x200 as per model requirement
-                        .toFloat()
-                        .div(255.0) // Normalize pixel values to [0, 1]
-                        .expandDims(0); // Add batch dimension
-
-                    console.log('Input Tensor Shape:', tensor.shape);
-
-                    // Load the model and make predictions
-                    const model = await loadModel();
-                    if (model) {
-                        const prediction = model.predict(tensor, {training: false}); // Ensure dropout is disabled
-
-                        // Get the probabilities for each class
-                        const probabilities = prediction.dataSync(); // Array of probabilities for each class
-                        console.log('Prediction Probabilities:', probabilities);
-
-                        // Get the class index with the highest probability
-                        const predictedClassIndex = prediction.argMax(-1).dataSync()[0];
-
-                        // Define class mapping (adjust as per your model's classes)
-                        const classMapping = {
-                            "0": "Afghan Hound",
-                            "1": "African Wild Dog",
-                            "2": "Airedale",
-                            "3": "American Bulldog",
-                            "4": "American Hairless",
-                            "5": "American Spaniel",
-                            "6": "Basenji",
-                            "7": "Basset",
-                            "8": "Basset Hound",
-                            "9": "Beagle",
-                            "10": "Bearded Collie",
-                            "11": "Bernese Mountain Dog"
-                        };
-
-                        // Display the predicted class label
-                        predictionElement.innerText = `Predicted Class: ${classMapping[predictedClassIndex] || 'Unknown'}`;
-
-                        // Display the probabilities for each class
-                        let probabilitiesText = '<b>Class Probabilities:</b><br>';
-                        for (let i = 0; i < probabilities.length; i++) {
-                            probabilitiesText += `${classMapping[i] || `Class ${i}`} : ${(probabilities[i] * 100).toFixed(2)}%<br>`;
-                        }
-                        probabilitiesElement.innerHTML = probabilitiesText;
-                    }
+                        // Konversi gambar ke tensor
+                        const imageTensor = tf.browser.fromPixels(canvas)
+                            .resizeNearestNeighbor([200, 200])  // Mengubah ukuran gambar menjadi 200x200
+                            .toFloat()
+                            .div(tf.scalar(255));  // Normalisasi gambar ke rentang [0, 1]
+                        
+                        // Prediksi dengan model
+                        predictImage(imageTensor);
+                    };
+                    img.src = e.target.result;
                 };
+                reader.readAsDataURL(file);
             }
         }
 
-        // Event listener to trigger image processing when a file is uploaded
-        document.getElementById('image-upload').addEventListener('change', predictImage);
+        // Fungsi untuk melakukan prediksi
+        async function predictImage(imageTensor) {
+            if (!model) {
+                console.error('Model belum dimuat!');
+                return;
+            }
+
+            // Menambahkan batch dimension (batch size = 1)
+            const batchedImage = imageTensor.expandDims(0);
+            
+            // Melakukan prediksi
+            const predictions = await model.predict(batchedImage);
+            
+            // Menampilkan hasil prediksi
+            predictions.print();
+
+            // Menampilkan prediksi dengan label
+            const predictedClass = predictions.argMax(-1).dataSync()[0];
+            console.log('Predicted class:', predictedClass);
+            alert('Prediksi selesai. Kelas terprediksi: ' + predictedClass);
+        }
+
+        // Menambahkan event listener untuk input gambar
+        document.getElementById('imageInput').addEventListener('change', handleImageUpload);
+
+        // Memuat model saat halaman dimuat
+        window.onload = function() {
+            loadModel();
+        };
     </script>
 </body>
 </html>
