@@ -45,7 +45,7 @@
             const imageTensor = tf.browser.fromPixels(imgElement)
               .resizeNearestNeighbor([200, 200]) // Resize sesuai input model (200x200)
               .toFloat()
-              .expandDims(0); // Tambahkan dimensi batch (1, 200, 200, 3)
+              .expandDims(3); // Tambahkan dimensi batch (1, 200, 200, 3)
 
             // Melakukan prediksi
             const prediction = model.predict(imageTensor);
