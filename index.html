@@ -15,86 +15,64 @@
     <div id="probabilities" style="margin-top: 20px;"></div>
 
     <script>
-        // Function to load the TensorFlow.js model
-        async function loadModel() {
-            try {
-                const model = await tf.loadLayersModel('/models/model.json');
-                console.log('Model loaded successfully!');
-                return model;
-            } catch (error) {
-                console.error('Error loading model:', error);
-                alert('Error loading model. Please check the model path and try again.');
-            }
-        }
-
         // Function to process the uploaded image and make predictions
-        async function predictImage() {
-            const fileInput = document.getElementById('image-upload');
-            const imageElement = document.getElementById('uploaded-image');
-            const predictionElement = document.getElementById('prediction');
-            const probabilitiesElement = document.getElementById('probabilities');
+async function predictImage() {
+    const fileInput = document.getElementById('image-upload');
+    const imageElement = document.getElementById('uploaded-image');
+    const predictionElement = document.getElementById('prediction');
+    const probabilitiesElement = document.getElementById('probabilities');
 
-            if (fileInput.files.length > 0) {
-                const imageFile = fileInput.files[0];
-                imageElement.src = URL.createObjectURL(imageFile);
-                imageElement.style.display = 'block'; // Display the uploaded image
+    if (fileInput.files.length > 0) {
+        const imageFile = fileInput.files[0];
+        imageElement.src = URL.createObjectURL(imageFile);
+        imageElement.style.display = 'block'; // Display the uploaded image
 
-                const img = new Image();
-                img.src = URL.createObjectURL(imageFile);
-                img.onload = async function () {
-                    // Preprocess the image: resize, normalize, and add batch dimension
-                    const tensor = tf.browser.fromPixels(img)
-                        .resizeNearestNeighbor([150, 150]) // Resize to 150x150 as per model requirement
-                        .toFloat()
-                        .div(255.0) // Normalize pixel values to [0, 1]
-                        .expandDims(0); // Add batch dimension
+        const img = new Image();
+        img.src = URL.createObjectURL(imageFile);
+        img.onload = async function () {
+            // Preprocess the image: resize to 200x200, normalize, and add batch dimension
+            const tensor = tf.browser.fromPixels(img)
+                .resizeNearestNeighbor([200, 200]) // Resize to 200x200 as per model requirement
+                .toFloat()
+                .div(255.0) // Normalize pixel values to [0, 1]
+                .expandDims(0); // Add batch dimension
 
-                    console.log('Input Tensor Shape:', tensor.shape);
+            console.log('Input Tensor Shape:', tensor.shape);
 
-                    // Load the model and make predictions
-                    const model = await loadModel();
-                    if (model) {
-                        const prediction = model.predict(tensor, {training: false}); // Ensure dropout is disabled
+            // Load the model and make predictions
+            const model = await loadModel();
+            if (model) {
+                const prediction = model.predict(tensor, {training: false}); // Ensure dropout is disabled
 
-                        // Get the probabilities for each class
-                        const probabilities = prediction.dataSync(); // Array of probabilities for each class
-                        console.log('Prediction Probabilities:', probabilities);
+                // Get the probabilities for each class
+                const probabilities = prediction.dataSync(); // Array of probabilities for each class
+                console.log('Prediction Probabilities:', probabilities);
 
-                        // Get the class index with the highest probability
-                        const predictedClassIndex = prediction.argMax(-1).dataSync()[0];
+                // Get the class index with the highest probability
+                const predictedClassIndex = prediction.argMax(-1).dataSync()[0];
 
-                        // Define class mapping (adjust as per your model's classes)
-                        const classMapping = {
-                            "0": "Afghan Hound",
-                            "1": "African Wild Dog",
-                            "2": "Airedale",
-                            "3": "American Bulldog",
-                            "4": "American Hairless",
-                            "5": "American Spaniel",
-                            "6": "Basenji",
-                            "7": "Basset",
-                            "8": "Basset Hound",
-                            "9": "Beagle",
-                            "10": "Bearded Collie",
-                            "11": "Bernese Mountain Dog"
-                        };
-
-                        // Display the predicted class label
-                        predictionElement.innerText = `Predicted Class: ${classMapping[predictedClassIndex] || 'Unknown'}`;
-
-                        // Display the probabilities for each class
-                        let probabilitiesText = '<b>Class Probabilities:</b><br>';
-                        for (let i = 0; i < probabilities.length; i++) {
-                            probabilitiesText += `${classMapping[i] || `Class ${i}`} : ${(probabilities[i] * 100).toFixed(2)}%<br>`;
-                        }
-                        probabilitiesElement.innerHTML = probabilitiesText;
-                    }
+                // Define class mapping (adjust as per your model's classes)
+                const classMapping = {
+                    "0": "Class 0", // Replace with your actual class names
+                    "1": "Class 1",
+                    "2": "Class 2",
+                    "3": "Class 3"
                 };
-            }
-        }
 
-        // Event listener to trigger image processing when a file is uploaded
-        document.getElementById('image-upload').addEventListener('change', predictImage);
+                // Display the predicted class label
+                predictionElement.innerText = `Predicted Class: ${classMapping[predictedClassIndex] || 'Unknown'}`;
+
+                // Display the probabilities for each class
+                let probabilitiesText = '<b>Class Probabilities:</b><br>';
+                for (let i = 0; i < probabilities.length; i++) {
+                    probabilitiesText += `${classMapping[i] || `Class ${i}`} : ${(probabilities[i] * 100).toFixed(2)}%<br>`;
+                }
+                probabilitiesElement.innerHTML = probabilitiesText;
+            }
+        };
+    }
+}
+
     </script>
 </body>
 </html>
