@@ -21,7 +21,7 @@ let model;
 
 // Memuat model dan bobot
 async function loadModel() {
-  model = await tf.loadLayersModel('model.json');  // Ganti dengan path model.json Anda
+  model = await tf.loadLayersModel('models/model.json');  // Ganti dengan path model.json Anda
   console.log("Model Loaded Successfully");
 }
 
