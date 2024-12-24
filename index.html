@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html>
 <head>
     <title>Image Classification</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.16.0/tf.min.js"></script>
@@ -20,32 +22,48 @@
             margin-top: 10px;
             font-weight: bold;
         }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .error {
+            color: red;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Image Classification</h1>
         
-        <input type="file" id="imageUpload" accept="image/*">
+        <input type="file" id="imageUpload" accept="image/*" disabled>
         <br>
         <img id="imagePreview" style="display: none;">
+        <div id="status" class="loading">Memuat model...</div>
         <div id="output" class="result"></div>
         <div id="prediction" class="prediction"></div>
     </div>
 
     <script>
         let model = null;
+        const imageUploadInput = document.getElementById('imageUpload');
+        const statusDiv = document.getElementById('status');
 
         // Fungsi untuk memuat model
         async function loadModel() {
             try {
+                statusDiv.textContent = 'Memuat model...';
+                imageUploadInput.disabled = true;
+
                 // Ganti dengan path ke model Anda
                 model = await tf.loadGraphModel('models/model.json');
+                
                 console.log('Model berhasil dimuat!');
-                document.getElementById('output').innerHTML = 'Model berhasil dimuat! Silakan upload gambar.';
+                statusDiv.textContent = 'Model siap digunakan';
+                imageUploadInput.disabled = false;
             } catch (error) {
                 console.error('Error loading model:', error);
-                document.getElementById('output').innerHTML = 'Error loading model: ' + error.message;
+                statusDiv.textContent = 'Error loading model: ' + error.message;
+                statusDiv.className = 'error';
             }
         }
 
@@ -68,6 +86,8 @@
                     .div(255.0)                 // Normalisasi nilai pixel (0-1)
                     .expandDims();              // Tambahkan dimensi batch
 
+                console.log('Input tensor shape:', tensor.shape);
+
                 // Lakukan prediksi
                 const prediction = await model.predict(tensor);
                 const probabilities = await prediction.data();
@@ -80,9 +100,8 @@
                 const maxProbability = Math.max(...probabilities);
                 const predictedClass = probabilities.indexOf(maxProbability);
 
-                // Mengembalikan semua probabilitas dan kelas yang diprediksi
                 return {
-                    probabilities: probabilities,
+                    probabilities: Array.from(probabilities),
                     predictedClass: predictedClass,
                     confidence: maxProbability
                 };
@@ -112,11 +131,13 @@
         }
 
         // Event listener untuk file upload
-        document.getElementById('imageUpload').addEventListener('change', async (e) => {
+        imageUploadInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
             try {
+                statusDiv.textContent = 'Memproses gambar...';
+                
                 // Tampilkan preview gambar
                 const preview = document.getElementById('imagePreview');
                 preview.style.display = 'block';
@@ -125,20 +146,17 @@
                 // Tunggu sampai gambar dimuat
                 const img = await processImage(file);
                 
-                // Pastikan model sudah dimuat
-                if (!model) {
-                    throw new Error('Model belum dimuat');
-                }
-
                 // Lakukan prediksi
                 const result = await predict(img);
                 
                 // Tampilkan hasil
                 document.getElementById('prediction').innerHTML = formatPrediction(result);
+                statusDiv.textContent = 'Prediksi selesai';
 
             } catch (error) {
                 console.error('Error:', error);
-                document.getElementById('output').innerHTML = 'Error: ' + error.message;
+                statusDiv.textContent = 'Error: ' + error.message;
+                statusDiv.className = 'error';
             }
         });
 
