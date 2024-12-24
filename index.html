@@ -1,72 +1,149 @@
-<!DOCTYPE html>
-<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TensorFlow.js Model</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <title>Image Classification</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.16.0/tf.min.js"></script>
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #imagePreview {
+            max-width: 300px;
+            margin: 20px 0;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+        .prediction {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-  <h1>Prediksi Model Keras dengan TensorFlow.js</h1>
-  <input type="file" id="imageUpload" accept="image/*" />
-  <br />
-  <button onclick="predict()">Prediksi</button>
-  <p id="result"></p>
+    <div class="container">
+        <h1>Image Classification</h1>
+        
+        <input type="file" id="imageUpload" accept="image/*">
+        <br>
+        <img id="imagePreview" style="display: none;">
+        <div id="output" class="result"></div>
+        <div id="prediction" class="prediction"></div>
+    </div>
 
-  <script src="app.js"></script>
+    <script>
+        let model = null;
+
+        // Fungsi untuk memuat model
+        async function loadModel() {
+            try {
+                // Ganti dengan path ke model Anda
+                model = await tf.loadGraphModel('models/model.json');
+                console.log('Model berhasil dimuat!');
+                document.getElementById('output').innerHTML = 'Model berhasil dimuat! Silakan upload gambar.';
+            } catch (error) {
+                console.error('Error loading model:', error);
+                document.getElementById('output').innerHTML = 'Error loading model: ' + error.message;
+            }
+        }
+
+        // Fungsi untuk memproses gambar
+        async function processImage(file) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        // Fungsi untuk melakukan prediksi
+        async function predict(img) {
+            try {
+                // Konversi gambar ke tensor dengan ukuran yang sesuai (200x200)
+                let tensor = tf.browser.fromPixels(img)
+                    .resizeBilinear([200, 200]) // Sesuai dengan input shape model
+                    .div(255.0)                 // Normalisasi nilai pixel (0-1)
+                    .expandDims();              // Tambahkan dimensi batch
+
+                // Lakukan prediksi
+                const prediction = await model.predict(tensor);
+                const probabilities = await prediction.data();
+                
+                // Bersihkan tensor
+                tensor.dispose();
+                prediction.dispose();
+
+                // Mencari indeks dengan probabilitas tertinggi
+                const maxProbability = Math.max(...probabilities);
+                const predictedClass = probabilities.indexOf(maxProbability);
+
+                // Mengembalikan semua probabilitas dan kelas yang diprediksi
+                return {
+                    probabilities: probabilities,
+                    predictedClass: predictedClass,
+                    confidence: maxProbability
+                };
+            } catch (error) {
+                console.error('Error during prediction:', error);
+                throw error;
+            }
+        }
+
+        // Fungsi untuk memformat hasil prediksi
+        function formatPrediction(result) {
+            // Sesuaikan label kelas sesuai dengan model Anda
+            const classLabels = ['Kelas 0', 'Kelas 1', 'Kelas 2', 'Kelas 3'];
+            
+            let html = '<h3>Hasil Prediksi:</h3>';
+            html += `<p>Kelas yang diprediksi: ${classLabels[result.predictedClass]}</p>`;
+            html += `<p>Confidence: ${(result.confidence * 100).toFixed(2)}%</p>`;
+            
+            html += '<h4>Probabilitas per kelas:</h4>';
+            html += '<ul>';
+            result.probabilities.forEach((prob, idx) => {
+                html += `<li>${classLabels[idx]}: ${(prob * 100).toFixed(2)}%</li>`;
+            });
+            html += '</ul>';
+            
+            return html;
+        }
+
+        // Event listener untuk file upload
+        document.getElementById('imageUpload').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                // Tampilkan preview gambar
+                const preview = document.getElementById('imagePreview');
+                preview.style.display = 'block';
+                preview.src = URL.createObjectURL(file);
+
+                // Tunggu sampai gambar dimuat
+                const img = await processImage(file);
+                
+                // Pastikan model sudah dimuat
+                if (!model) {
+                    throw new Error('Model belum dimuat');
+                }
+
+                // Lakukan prediksi
+                const result = await predict(img);
+                
+                // Tampilkan hasil
+                document.getElementById('prediction').innerHTML = formatPrediction(result);
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('output').innerHTML = 'Error: ' + error.message;
+            }
+        });
+
+        // Muat model saat halaman dimuat
+        window.onload = loadModel;
+    </script>
 </body>
-<script>
-
-let model;
-
-// Memuat model dan bobot
-async function loadModel() {
-  model = await tf.loadLayersModel('models/model.json');  // Ganti dengan path model.json Anda
-  console.log("Model Loaded Successfully");
-}
-
-// Menyiapkan input dan memproses gambar
-async function processImage(file) {
-  const img = new Image();
-  img.src = URL.createObjectURL(file);
-  
-  return new Promise((resolve, reject) => {
-    img.onload = () => {
-      // Membuat tensor dengan ukuran yang sesuai dengan input model [200, 200, 3]
-      const tensor = tf.browser.fromPixels(img)
-        .resizeNearestNeighbor([200, 200]) // Resize gambar ke 200x200
-        .toFloat()
-        .div(tf.scalar(255))  // Normalisasi ke rentang [0, 1]
-        .expandDims();  // Menambahkan dimensi batch [1, 200, 200, 3]
-      
-      resolve(tensor);
-    };
-    img.onerror = (err) => reject(err);
-  });
-}
-
-// Prediksi gambar
-async function predict() {
-  const fileInput = document.getElementById('imageUpload');
-  const file = fileInput.files[0];
-  
-  if (file && model) {
-    try {
-      const tensor = await processImage(file);
-      const prediction = model.predict(tensor);
-      const output = prediction.dataSync();  // Mengambil hasil prediksi
-
-      // Menampilkan hasil prediksi
-      document.getElementById('result').innerText = `Prediksi: ${output}`;
-    } catch (error) {
-      console.error("Terjadi kesalahan saat memproses gambar:", error);
-    }
-  } else {
-    alert("Model atau gambar belum dimuat.");
-  }
-}
-
-// Muat model saat halaman dibuka
-loadModel();
-</script>
 </html>
