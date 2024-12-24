@@ -1,189 +1,48 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Image Classification</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0"></script>
-    <style>
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        #imagePreview {
-            max-width: 300px;
-            margin: 20px 0;
-        }
-        .result {
-            margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
-        }
-        .prediction {
-            margin-top: 10px;
-            font-weight: bold;
-        }
-        #status {
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 4px;
-        }
-        .loading {
-            background-color: #e8f4f8;
-            color: #666;
-        }
-        .error {
-            background-color: #fee;
-            color: #c00;
-        }
-        .success {
-            background-color: #efe;
-            color: #060;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Classifier</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>Image Classification</h1>
-        
-        <input type="file" id="imageUpload" accept="image/*" disabled>
-        <br>
-        <img id="imagePreview" style="display: none;">
-        <div id="status" class="loading">Initializing...</div>
-        <div id="modelInfo"></div>
-        <div id="prediction" class="prediction"></div>
-    </div>
+  <h1>Image Classifier</h1>
+  <input type="file" id="image-input" />
+  <img id="image" width="224" />
+  <p id="prediction">Prediction will be displayed here</p>
 
-    <script>
-        let model = null;
-        const imageUploadInput = document.getElementById('imageUpload');
-        const statusDiv = document.getElementById('status');
-        const modelInfoDiv = document.getElementById('modelInfo');
+  <script>
+    // Muat model MobileNet dari TensorFlow.js
+    let model;
 
-        async function loadModel() {
-            try {
-                updateStatus('Loading model...', 'loading');
+    async function loadModel() {
+      model = await mobilenet.load();
+      console.log('Model loaded');
+    }
 
-                // Cek versi tfjs
-                console.log('TensorFlow.js version:', tf.version.tfjs);
-                
-                // Handler untuk error selama loading model
-                const loadHandler = {
-                    load: {
-                        success: () => console.log('Weight loading success'),
-                        error: (err) => console.error('Weight loading error:', err)
-                    }
-                };
+    // Fungsi untuk memprediksi gambar yang diupload
+    async function classifyImage() {
+      const imageElement = document.getElementById('image');
+      const prediction = await model.classify(imageElement);
+      document.getElementById('prediction').innerText = `Prediction: ${prediction[0].className} with ${prediction[0].probability.toFixed(3)}`;
+    }
 
-                // Load model dengan custom handler
-                model = await tf.loadLayersModel('models/model.json', loadHandler);
-                
-                console.log('Model loaded successfully');
-                console.log('Input shape:', model.inputs[0].shape);
-                
-                updateStatus('Model ready', 'success');
-                imageUploadInput.disabled = false;
+    // Event listener untuk input gambar
+    document.getElementById('image-input').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const imageElement = document.getElementById('image');
+        imageElement.src = e.target.result;
+        imageElement.onload = classifyImage;
+      };
+      reader.readAsDataURL(file);
+    });
 
-                // Tampilkan informasi model
-                modelInfoDiv.innerHTML = `
-                    <p>Model Information:</p>
-                    <pre>
-                    Input shape: ${JSON.stringify(model.inputs[0].shape)}
-                    Number of layers: ${model.layers.length}
-                    </pre>
-                `;
-
-            } catch (error) {
-                console.error('Error loading model:', error);
-                updateStatus(`Error loading model: ${error.message}`, 'error');
-                throw error;
-            }
-        }
-
-        function updateStatus(message, type) {
-            statusDiv.textContent = message;
-            statusDiv.className = type;
-        }
-
-        async function processImage(file) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = (err) => reject(new Error('Error loading image: ' + err.message));
-                img.src = URL.createObjectURL(file);
-            });
-        }
-
-        async function predict(img) {
-            return tf.tidy(() => {
-                // Log original image dimensions
-                console.log('Original image dimensions:', img.width, 'x', img.height);
-
-                // Convert to tensor
-                const imageTensor = tf.browser.fromPixels(img);
-                console.log('Image tensor shape:', imageTensor.shape);
-
-                // Preprocessing
-                const resized = tf.image.resizeBilinear(imageTensor, [200, 200]);
-                console.log('Resized tensor shape:', resized.shape);
-                
-                const normalized = resized.div(255.0);
-                const batched = normalized.expandDims(0);
-                console.log('Final input tensor shape:', batched.shape);
-
-                // Make prediction
-                const prediction = model.predict(batched);
-                console.log('Prediction tensor shape:', prediction.shape);
-                
-                return prediction.dataSync();
-            });
-        }
-
-        function formatPrediction(probabilities) {
-            const classLabels = ['Kelas 0', 'Kelas 1', 'Kelas 2', 'Kelas 3'];
-            const maxProb = Math.max(...probabilities);
-            const predictedClass = probabilities.indexOf(maxProb);
-
-            return `
-                <h3>Hasil Prediksi</h3>
-                <p>Kelas: ${classLabels[predictedClass]}</p>
-                <p>Confidence: ${(maxProb * 100).toFixed(2)}%</p>
-                <h4>Semua Probabilitas:</h4>
-                <ul>
-                    ${classLabels.map((label, i) => 
-                        `<li>${label}: ${(probabilities[i] * 100).toFixed(2)}%</li>`
-                    ).join('')}
-                </ul>
-            `;
-        }
-
-        imageUploadInput.addEventListener('change', async (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            try {
-                updateStatus('Processing image...', 'loading');
-
-                // Display preview
-                const preview = document.getElementById('imagePreview');
-                preview.style.display = 'block';
-                preview.src = URL.createObjectURL(file);
-
-                // Process image and predict
-                const img = await processImage(file);
-                const probabilities = await predict(img);
-                
-                // Display results
-                document.getElementById('prediction').innerHTML = formatPrediction(probabilities);
-                updateStatus('Prediction complete', 'success');
-
-            } catch (error) {
-                console.error('Error during prediction:', error);
-                updateStatus(`Error: ${error.message}`, 'error');
-            }
-        });
-
-        // Initialize when page loads
-        window.onload = loadModel;
-    </script>
+    // Memuat model saat halaman dimuat
+    loadModel();
+  </script>
 </body>
 </html>
