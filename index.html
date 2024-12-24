@@ -2,8 +2,8 @@
 <html>
 <head>
     <title>Image Classification</title>
-    <!-- Menggunakan versi spesifik TensorFlow.js yang kompatibel -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0/dist/tf.min.js"></script>
+    <!-- Menggunakan versi yang lebih lama dari TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
     <style>
         .container {
             max-width: 800px;
@@ -30,11 +30,6 @@
         .error {
             color: red;
         }
-        #modelInfo {
-            margin-top: 10px;
-            font-family: monospace;
-            white-space: pre-wrap;
-        }
     </style>
 </head>
 <body>
@@ -45,7 +40,6 @@
         <br>
         <img id="imagePreview" style="display: none;">
         <div id="status" class="loading">Memuat model...</div>
-        <div id="modelInfo"></div>
         <div id="output" class="result"></div>
         <div id="prediction" class="prediction"></div>
     </div>
@@ -54,7 +48,6 @@
         let model = null;
         const imageUploadInput = document.getElementById('imageUpload');
         const statusDiv = document.getElementById('status');
-        const modelInfoDiv = document.getElementById('modelInfo');
 
         // Fungsi untuk memuat model
         async function loadModel() {
@@ -62,34 +55,21 @@
                 statusDiv.textContent = 'Memuat model...';
                 imageUploadInput.disabled = true;
 
-                // Pastikan TensorFlow.js dimuat
-                if (!tf) {
-                    throw new Error('TensorFlow.js tidak dimuat dengan benar');
-                }
+                // Konfigurasi model
+                const modelConfig = {
+                    inputs: [{
+                        name: 'input_1',
+                        shape: [null, 200, 200, 3],
+                        dtype: 'float32'
+                    }]
+                };
 
-                // Tampilkan versi TensorFlow.js
-                modelInfoDiv.textContent = `TensorFlow.js Version: ${tf.version.tfjs}`;
-
-                // Muat model dengan error handling yang lebih baik
-                const modelPath = 'models/model.json';
-                try {
-                    // Coba load sebagai graph model
-                    model = await tf.loadGraphModel(modelPath);
-                } catch (graphError) {
-                    console.error('Error loading as graph model:', graphError);
-                    // Jika gagal, coba load sebagai layered model
-                    try {
-                        model = await tf.loadLayersModel(modelPath);
-                    } catch (layeredError) {
-                        throw new Error(`Failed to load model: ${graphError.message}\nAlso failed as layers model: ${layeredError.message}`);
-                    }
-                }
-
+                // Load model dengan konfigurasi
+                model = await tf.loadLayersModel('models/model.json', { strict: false });
+                
                 console.log('Model berhasil dimuat!');
-                modelInfoDiv.textContent += '\nModel berhasil dimuat';
-                if (model.inputShape) {
-                    modelInfoDiv.textContent += `\nInput shape: ${JSON.stringify(model.inputShape)}`;
-                }
+                console.log('Model summary:', model.summary());
+                
                 statusDiv.textContent = 'Model siap digunakan';
                 imageUploadInput.disabled = false;
 
@@ -97,7 +77,6 @@
                 console.error('Error loading model:', error);
                 statusDiv.textContent = 'Error loading model: ' + error.message;
                 statusDiv.className = 'error';
-                modelInfoDiv.textContent += '\nError details: ' + JSON.stringify(error, null, 2);
             }
         }
 
@@ -114,30 +93,37 @@
         // Fungsi untuk melakukan prediksi
         async function predict(img) {
             try {
-                // Konversi gambar ke tensor dengan ukuran yang sesuai (200x200)
-                let tensor = tf.tidy(() => {
-                    const imageTensor = tf.browser.fromPixels(img)
-                    const resized = tf.image.resizeBilinear(imageTensor, [200, 200])
-                    const normalized = resized.div(255.0)
-                    return normalized.expandDims(0)
+                // Konversi gambar ke tensor
+                const tensor = tf.tidy(() => {
+                    // Konversi gambar ke tensor
+                    const imageTensor = tf.browser.fromPixels(img);
+                    console.log('Original image shape:', imageTensor.shape);
+                    
+                    // Resize ke 200x200
+                    const resized = tf.image.resizeBilinear(imageTensor, [200, 200]);
+                    console.log('Resized shape:', resized.shape);
+                    
+                    // Normalisasi nilai pixel
+                    const normalized = resized.div(255.0);
+                    
+                    // Tambahkan dimensi batch
+                    return normalized.expandDims(0);
                 });
 
-                console.log('Input tensor shape:', tensor.shape);
+                console.log('Final input tensor shape:', tensor.shape);
 
                 // Lakukan prediksi
-                const prediction = await model.predict(tensor);
-                const probabilities = await prediction.data();
+                const predictions = await model.predict(tensor).data();
                 
                 // Bersihkan tensor
                 tensor.dispose();
-                prediction.dispose();
 
                 // Mencari indeks dengan probabilitas tertinggi
-                const maxProbability = Math.max(...probabilities);
-                const predictedClass = probabilities.indexOf(maxProbability);
+                const maxProbability = Math.max(...predictions);
+                const predictedClass = Array.from(predictions).indexOf(maxProbability);
 
                 return {
-                    probabilities: Array.from(probabilities),
+                    probabilities: Array.from(predictions),
                     predictedClass: predictedClass,
                     confidence: maxProbability
                 };
