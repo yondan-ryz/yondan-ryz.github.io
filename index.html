@@ -3,67 +3,318 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image Classifier</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+  <title>GitHub API JSON Manager</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { margin: 20px; }
+    table { margin-top: 20px; }
+    .modal-content {
+      border-radius: 5px;
+    }
+    .product-image {
+      max-width: 100px;
+      max-height: 100px;
+    }
+    #loader {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 30px;
+    }
+  </style>
 </head>
 <body>
-  <h1>Image Classifier</h1>
-  <input type="file" id="image-input" />
-  <img id="image" width="224" />
-  <p id="prediction">Prediction will be displayed here</p>
+  <div class="container">
+    <h1 class="my-4">GitHub API JSON Manager</h1>
+    
+    <!-- Loader -->
+    <div id="loader">Loading...</div>
 
+    <h2>Product List</h2>
+    <table id="productTable" class="table table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Price</th>
+          <th>Image</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="productList">
+        <!-- Products will be inserted here dynamically -->
+      </tbody>
+    </table>
+
+    <h2>Insert New Product</h2>
+    <form id="insertForm" class="mb-4">
+      <div class="mb-3">
+        <label for="insertName" class="form-label">Product Name</label>
+        <input type="text" id="insertName" class="form-control" placeholder="Enter product name">
+      </div>
+      <div class="mb-3">
+        <label for="insertPrice" class="form-label">Product Price</label>
+        <input type="text" id="insertPrice" class="form-control" placeholder="Enter product price">
+      </div>
+      <div class="mb-3">
+        <label for="insertImage" class="form-label">Product Image</label>
+        <input type="file" id="insertImage" class="form-control" accept="image/*">
+      </div>
+      <button type="submit" class="btn btn-primary">Insert Product</button>
+    </form>
+
+    <h2>Update Product by ID</h2>
+    <form id="updateForm" class="mb-4">
+      <div class="mb-3">
+        <label for="updateId" class="form-label">Product ID</label>
+        <input type="text" id="updateId" class="form-control" placeholder="Enter ID to update">
+      </div>
+      <div class="mb-3">
+        <label for="updateName" class="form-label">New Product Name</label>
+        <input type="text" id="updateName" class="form-control" placeholder="Enter new product name">
+      </div>
+      <div class="mb-3">
+        <label for="updatePrice" class="form-label">New Product Price</label>
+        <input type="text" id="updatePrice" class="form-control" placeholder="Enter new product price">
+      </div>
+      <div class="mb-3">
+        <label for="updateImage" class="form-label">New Product Image</label>
+        <input type="file" id="updateImage" class="form-control" accept="image/*">
+      </div>
+      <button type="submit" class="btn btn-warning">Update Product</button>
+    </form>
+
+    <div id="deleteModal" class="modal fade" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="deleteModalLabel">Delete Product</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Are you sure you want to delete this product?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="confirmDelete" class="btn btn-danger" data-bs-dismiss="modal">Yes, Delete</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="updateModal" class="modal fade" tabindex="-1" aria-labelledby="updateModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="updateModalLabel">Update Product</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="modalUpdateForm">
+              <div class="mb-3">
+                <label for="modalUpdateName" class="form-label">New Product Name</label>
+                <input type="text" id="modalUpdateName" class="form-control" placeholder="Enter new product name">
+              </div>
+              <div class="mb-3">
+                <label for="modalUpdatePrice" class="form-label">New Product Price</label>
+                <input type="text" id="modalUpdatePrice" class="form-control" placeholder="Enter new product price">
+              </div>
+              <div class="mb-3">
+                <label for="modalUpdateImage" class="form-label">New Image</label>
+                <input type="file" id="modalUpdateImage" class="form-control" accept="image/*">
+              </div>
+              <button type="submit" class="btn btn-success" data-bs-dismiss="modal">Update</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    let model;
+   const token = "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"; // Replace with your GitHub personal access token
+    const repoOwner = "yondan-ryz";
+    const repoName = "PlatServer";
+    const filePath = "data.json";
+    const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+    
+    let currentDeleteId = null;
+    let currentUpdateId = null;
 
-    // Muat model MobileNet secara asinkron
-    async function loadModel() {
-      try {
-        model = await mobilenet.load();
-        console.log('Model loaded');
-      } catch (error) {
-        console.error('Error loading model:', error);
-      }
-    }
-
-    // Fungsi untuk memprediksi gambar yang diupload
-    async function classifyImage() {
-      if (!model) {
-        console.log('Model is not loaded yet');
-        return;
-      }
-      const imageElement = document.getElementById('image');
-      try {
-        const prediction = await model.classify(imageElement);
-        document.getElementById('prediction').innerText = `Prediction: ${prediction[0].className} with ${prediction[0].probability.toFixed(3)}`;
-      } catch (error) {
-        console.error('Error classifying image:', error);
-      }
-    }
-
-    // Event listener untuk input gambar
-    document.getElementById('image-input').addEventListener('change', function(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const imageElement = document.getElementById('image');
-        imageElement.src = e.target.result;
-        imageElement.onload = function() {
-          // Hanya klasifikasikan gambar jika model sudah siap
-          if (model) {
-            classifyImage();
-          } else {
-            console.log('Model is still loading');
-          }
+    // Helper function to fetch file content and SHA
+    async function fetchFile() {
+      const response = await fetch(apiUrl, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        return { 
+          content: JSON.parse(atob(data.content)),
+          sha: data.sha 
         };
-      };
-      reader.readAsDataURL(file);
+      } else {
+        throw new Error(data.message);
+      }
+    }
+
+    // Helper function to update file on GitHub
+    async function updateFile(newContent, message, sha) {
+      const response = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message,
+          content: btoa(JSON.stringify(newContent, null, 2)),
+          sha
+        })
+      });
+      return await response.json();
+    }
+
+    // Display products in the table
+    function displayProducts(products) {
+      const productList = document.getElementById('productList');
+      productList.innerHTML = '';
+
+      products.forEach(product => {
+        const row = document.createElement('tr');
+        row.innerHTML = ` 
+          <td>${product.id}</td>
+          <td>${product.name}</td>
+          <td>${product.price}</td>
+          <td><img class="product-image" src="data:image/png;base64,${product.base64Text}" alt="Product Image" /></td>
+          <td>
+            <button class="btn btn-warning btn-sm" onclick="openUpdateModal(${product.id})">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="openDeleteModal(${product.id})">Delete</button>
+          </td>
+        `;
+        productList.appendChild(row);
+      });
+    }
+
+    // Show loader
+    function showLoader() {
+      document.getElementById('loader').style.display = 'block';
+    }
+
+    // Hide loader
+    function hideLoader() {
+      document.getElementById('loader').style.display = 'none';
+    }
+
+    // Open the update modal
+    function openUpdateModal(id) {
+      currentUpdateId = id;
+      const updateModal = new bootstrap.Modal(document.getElementById('updateModal'));
+      updateModal.show();
+    }
+
+    // Open the delete confirmation modal
+    function openDeleteModal(id) {
+      currentDeleteId = id;
+      const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+      deleteModal.show();
+    }
+
+    // Confirm delete
+    document.getElementById('confirmDelete').addEventListener('click', async () => {
+      showLoader();
+      try {
+        const { content, sha } = await fetchFile();
+        
+        const updatedProducts = content.products.filter(p => p.id !== currentDeleteId);
+        
+        updatedProducts.forEach((product, index) => {
+          product.id = index + 1;
+        });
+
+        content.products = updatedProducts;
+        await updateFile(content, `Delete product with ID ${currentDeleteId}`, sha);
+        displayProducts(content.products);
+        
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        deleteModal.hide();
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      } finally {
+        hideLoader();
+      }
     });
 
-    // Memuat model saat halaman dimuat
-    loadModel();
+    // Update product in modal
+    document.getElementById('modalUpdateForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('modalUpdateName').value;
+      const price = document.getElementById('modalUpdatePrice').value;
+      const imageFile = document.getElementById('modalUpdateImage').files[0];
+      const base64Image = await convertToBase64(imageFile);
+
+      try {
+        const { content, sha } = await fetchFile();
+        const productIndex = content.products.findIndex(p => p.id === currentUpdateId);
+        if (productIndex !== -1) {
+          content.products[productIndex] = { id: currentUpdateId, name, price, base64Text: base64Image };
+          await updateFile(content, `Update product with ID ${currentUpdateId}`, sha);
+          displayProducts(content.products);
+          
+          const updateModal = new bootstrap.Modal(document.getElementById('updateModal'));
+          updateModal.hide();
+        } else {
+          alert(`Product with ID ${currentUpdateId} not found`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      } finally {
+        hideLoader();
+      }
+    });
+
+    // Convert image file to base64
+    function convertToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Insert product form submission
+    document.getElementById('insertForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('insertName').value;
+      const price = document.getElementById('insertPrice').value;
+      const imageFile = document.getElementById('insertImage').files[0];
+      const base64Image = await convertToBase64(imageFile);
+
+      try {
+        const { content, sha } = await fetchFile();
+        const nextId = content.products.length ? Math.max(...content.products.map(p => p.id)) + 1 : 1;
+        content.products.push({ id: nextId, name, price, base64Text: base64Image });
+        await updateFile(content, `Insert product with ID ${nextId}`, sha);
+        displayProducts(content.products);
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    });
+
+    // Initialize the page
+    async function init() {
+      try {
+        const { content } = await fetchFile();
+        displayProducts(content.products);
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+
+    init();
   </script>
 </body>
 </html>
